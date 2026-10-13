@@ -254,6 +254,28 @@
   <script>
     const EVENTS_DATA = [
       {
+        id: 14,
+        title: "2026 Mid Autumn Festival",
+        badge: "Festival",
+        badgeClass: "ne-badge-amber",
+        date: "September 2026",
+        isoDate: "2026-09-25",
+        category: "Cultural Tradition",
+        description: "Lanterns, mooncakes and a Houyi archery game under one marquee, colleagues gathering for an evening of togetherness beneath the full autumn moon.",
+        image: "assets/events/event-14.jpg?v=20261013-1"
+      },
+      {
+        id: 15,
+        title: "2026 Company Trip - Semporna (Mabul, Kapalai, Mataking)",
+        badge: "Island Retreat",
+        badgeClass: "ne-badge-teal",
+        date: "October 2026",
+        isoDate: "2026-10-10",
+        category: "Nature Adventure",
+        description: "Boat transfers out of Semporna to Mabul, Kapalai and Mataking, reef dives off the house reefs, and a jetty full of colleagues under one banner: one team, one dream.",
+        image: "assets/events/event-15.jpg?v=20261013-1"
+      },
+      {
         id: 1,
         title: "2025 Dinner Party",
         badge: "Corporate Gala",
@@ -436,7 +458,9 @@
       10: 'ehs-management',
       11: '2023-china-annual-dinner-and-project-visit-tour',
       12: '2023-malaysia-annual-dinner',
-      13: '2023-company-trip-sabah-'
+      13: '2023-company-trip-sabah-',
+      14: '2026-mid-autumn-festival',
+      15: '2026-company-trip-semporna'
     };
     let galleryByAlbum = {};
     let modalGallery = [];
@@ -476,8 +500,14 @@
     window.addEventListener('resize', () => { if (eventModal.classList.contains('active')) fitModalToImage(); });
 
     const galleryAssetVersion = '20260921-1';
+    // The INDEX is versioned separately from the images. Both shared one
+    // constant, so adding an album meant bumping the version on all 157
+    // existing photographs too — a pointless re-download for every
+    // returning visitor. New albums are new paths and fetch fresh anyway;
+    // only this manifest has to be re-read.
+    const galleryIndexVersion = '20261013-1';
 
-    fetch(`assets/events/gallery/sources.json?v=${galleryAssetVersion}`)
+    fetch(`assets/events/gallery/sources.json?v=${galleryIndexVersion}`)
       .then(response => response.ok ? response.json() : Promise.reject(new Error('Gallery index unavailable')))
       .then(items => {
         items.forEach(entry => {
