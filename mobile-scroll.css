@@ -62,29 +62,6 @@
     }
   }
 
-  /* A six-card service list fits cleanly as three compact rows.  This rule is
-     deliberately scoped to the Home page so desktop and the other grids keep
-     their original proportions. */
-  .lm-home-services .lm-g3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-  }
-
-  .lm-home-services .lm-g3 > div {
-    padding: 14px !important;
-  }
-
-  .lm-home-services {
-    min-height: calc(100svh + 32px) !important;
-    margin-bottom: 28px;
-  }
-
-  /* The decorative video tints the service surface on phones. Remove that
-     tint so the breathing room before statistics is the exact same white. */
-  .lm-home-services video {
-    display: none;
-  }
-
   /* Keep the four proof points compact on a phone; the desktop one-row layout
      otherwise collapses into a tall, mostly empty blue block. */
   .lm-home-stats {
@@ -307,12 +284,6 @@
   }
 }
 
-/* Services spec line: exists only for the phone layout below. The desktop
-   card already carries the full description and must not gain a second one. */
-.lm-svc-short {
-  display: none;
-}
-
 /* Phone refinements on top of the section layout. Every selector carries a
    section hook (.lm-home-hero, .lm-home-services, .lm-home-stats) because this
    file loads BEFORE the page's own <style>, whose phone hero rules are also
@@ -330,38 +301,6 @@
   [style*="font-size:11px"], [style*="font-size: 11px"] { font-size: 13px !important; }
   [style*="font-size:13px"], [style*="font-size: 13px"] { font-size: 14px !important; }
   .lm-project-pair .lm-pcard > div:last-child > span { font-size: 12px !important; }
-
-  /* Services: icon, title and a spec line, no card chrome, so all six fit one
-     screen. The bordered box is what made two columns feel cramped. */
-  .lm-home-services .lm-g3 { gap: 24px 18px !important; }
-  .lm-home-services .lm-g3 > div {
-    padding: 0 !important;
-    background: none !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    transform: none !important;
-  }
-  .lm-home-services .lm-g3 > div > p { display: none; }
-  /* :first-child, or this also seizes the spec span after the title. */
-  .lm-home-services .lm-g3 > div > span:first-child {
-    width: 34px !important;
-    height: 34px !important;
-    margin: 0 0 10px !important;
-  }
-  .lm-home-services .lm-g3 > div > h3 {
-    font-size: 14px !important;
-    line-height: 1.35;
-    margin: 0 !important;
-  }
-  .lm-home-services .lm-g3 > div > .lm-svc-short {
-    display: block;
-    margin-top: 5px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1.4;
-    letter-spacing: .01em;
-    color: var(--text-muted);
-  }
 
   /* Stats: number over label on every tile. As baseline rows that wrap, the
      four came out three different heights at this width. */
