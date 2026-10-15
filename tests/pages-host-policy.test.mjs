@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const code = fs.readFileSync(new URL('../functions/_middleware.js', import.meta.url), 'utf8');
-const { decide, onRequest, isRetired } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
+const { decide, onRequest, isRetired, isNotPublic } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
 
 const PROJECT = 'longmotive-website.pages.dev';
 const PREVIEW = 'news-events.' + PROJECT;
@@ -87,6 +87,11 @@ for (const slug of ['hero-arc-compare', 'hero-jb-compare', 'hero-real-prototype'
     assert.equal(isRetired(form), true, form + ' must be retired');
   }
 }
+// The three.js test pages are retired the same way.
+for (const form of ['/uploads/3d/viewer-test', '/uploads/3d/viewer-test.html',
+                    '/uploads/3d/viewer-test-5ea1ff35', '/uploads/3d/viewer-test-5ea1ff35.html']) {
+  assert.equal(isRetired(form), true, form + ' must be retired');
+}
 // The globe embed is framed by the home screen and stays.
 for (const keep of ['/projects-globe-embed', '/about', '/', '/news-events', '/msb-viewer.dc']) {
   assert.equal(isRetired(keep), false, keep + ' must keep serving');
@@ -98,5 +103,19 @@ const gone = await onRequest({
 assert.equal(gone.status, 410, 'a retired page answers 410 on the custom domain');
 assert.equal(gone.headers.get('cache-control'), 'no-store', 'and nothing may pin that answer');
 assert.doesNotMatch(await gone.text(), /the old page/, 'next() must never be reached for a retired path');
+
+// Test code and the export manifest are not public on any host.
+for (const p of ['/tests/contact-routing.test.mjs', '/tests/', '/export-manifest.json']) {
+  assert.equal(isNotPublic(p), true, p + ' must not be public');
+}
+for (const p of ['/', '/news-events', '/projects-globe-embed', '/assets/x.jpg', '/testsuite', '/export-manifest.json.bak']) {
+  assert.equal(isNotPublic(p), false, p + ' must stay public');
+}
+const hidden = await onRequest({
+  request: new Request('https://www.longmotive-m.com/tests/contact-routing.test.mjs'),
+  next: async () => new Response('the test file', { headers: { 'content-type': 'text/javascript' } }),
+});
+assert.equal(hidden.status, 404);
+assert.doesNotMatch(await hidden.text(), /the test file/, 'next() must never be reached for a hidden path');
 
 console.log('PASS: one address serves the site, the rest point at it or stay out of the index');

@@ -58,12 +58,25 @@ const RETIRED = new Set([
   // TAKE THIS LINE OUT WHEN THE PAGE SHIPS. Leave it in and the page will
   // deploy and still answer 410, with nothing in the build to explain why.
   'ktp-growth-scrub',
+  // Two three.js test pages from early viewer work, published with the site
+  // and linked from nowhere ("ECC Monitoring Room -- Three.js viewer test").
+  'uploads/3d/viewer-test', 'uploads/3d/viewer-test-5ea1ff35',
 ]);
 
 export function isRetired(pathname) {
   const slug = pathname
     .replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.html$/, '');
   return RETIRED.has(slug);
+}
+
+// NOT PUBLIC, ON ANY HOST. Pages serves the whole repository, so the test
+// suite and the export manifest were readable by anyone -- the tests spell out
+// how the contact form routes mail. Nothing on the site loads them.
+const NOT_PUBLIC_PREFIXES = ['/tests/'];
+const NOT_PUBLIC_FILES = new Set(['/export-manifest.json']);
+
+export function isNotPublic(pathname) {
+  return NOT_PUBLIC_FILES.has(pathname) || NOT_PUBLIC_PREFIXES.some(p => pathname.startsWith(p));
 }
 
 const GONE_BODY = '<!doctype html><meta charset="utf-8"><title>Gone | Longmotive</title>'
@@ -104,6 +117,13 @@ export async function onRequest(context) {
     return new Response(GONE_BODY, {
       status: 410,
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' },
+    });
+  }
+
+  if (isNotPublic(url.pathname)) {
+    return new Response('Not found', {
+      status: 404,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' },
     });
   }
 

@@ -65,8 +65,13 @@ for (const orphan of ['hero-arc-compare', 'hero-jb-compare', 'hero-real-prototyp
   assert.equal(fs.existsSync(path.join(root, orphan + '.html')), false,
     `${orphan}.html is a working file and must not be published`);
 }
-// The globe embed is not one of them -- the home screen frames it.
+for (const orphan of ['uploads/3d/viewer-test.html', 'uploads/3d/viewer-test-5ea1ff35.html']) {
+  assert.equal(fs.existsSync(path.join(root, orphan)), false, `${orphan} is a test page and must not be published`);
+}
+// The globe embed is not one of them -- the home screen frames it -- but it
+// is not a page of its own either.
 assert.ok(fs.existsSync(path.join(root, 'projects-globe-embed.html')));
+assert.match(fs.readFileSync(path.join(root, 'projects-globe-embed.html'), 'utf8'), /<meta name="robots" content="noindex">/);
 assert.match(html, /projects-globe-embed/);
 
 // HSTS, and deliberately not for the subdomains we do not run.
