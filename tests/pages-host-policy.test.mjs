@@ -6,8 +6,10 @@ import assert from 'node:assert/strict';
 const code = fs.readFileSync(new URL('../functions/_middleware.js', import.meta.url), 'utf8');
 const { decide, onRequest, isRetired } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
 
-const PROJECT = 'longmotive-web-demo-site-avm.pages.dev';
+const PROJECT = 'longmotive-website.pages.dev';
 const PREVIEW = 'news-events.' + PROJECT;
+// the project the builds left behind when the repository changed hands
+const OLD_PROJECT = 'longmotive-web-demo-site-avm.pages.dev';
 const doc = { dest: 'document' };
 
 // The custom domain is the site and must not notice this file exists.
@@ -28,6 +30,16 @@ assert.deepEqual(
 // ...but only a reader. A form post has to reach the function it was aimed at.
 assert.equal(decide({ host: PROJECT, method: 'POST', pathname: '/api/contact' }).action, 'noindex');
 assert.equal(decide({ host: PROJECT, pathname: '/assets/og-cover.jpg', dest: 'image' }).action, 'noindex');
+
+// The old project's host is still ours and gets the same treatment.
+assert.deepEqual(
+  decide({ host: OLD_PROJECT, pathname: '/about', ...doc }),
+  { action: 'redirect', to: 'https://www.longmotive-m.com/about' },
+);
+assert.equal(decide({ host: OLD_PROJECT, pathname: '/robots.txt' }).action, 'robots');
+assert.equal(decide({ host: 'main.' + OLD_PROJECT, ...doc }).action, 'noindex');
+// A look-alike is not a subdomain of ours.
+assert.equal(decide({ host: 'evil-longmotive-website.pages.dev', ...doc }).action, 'pass');
 
 // Branch previews keep working -- they are how anything gets reviewed.
 assert.equal(decide({ host: PREVIEW, pathname: '/news-events', ...doc }).action, 'noindex');
