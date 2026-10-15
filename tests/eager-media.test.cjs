@@ -35,9 +35,18 @@ assert.match(html, /class="lm-hero-media"[^>]*preload="auto"/,
   'and the one that does must be the hero');
 
 // Every video the page names has to exist, at a weight someone would accept.
-const BUDGET_MB = { 'principles-bg': 9 };
-const srcs = [...html.matchAll(/data-src="(uploads\/[\w./-]+\.mp4)"/g)].map(m => m[1]);
-assert.ok(srcs.length >= 2, 'expected the background films to be declared');
+// A film is named one of two ways: a literal data-src (the KTP band on Home)
+// or a vid: entry in the About gallery, bound into data-src at render time.
+// The services backdrop (principles-bg) used to be the heaviest one here; it
+// was removed with the October 2026 services rebuild and must not come back --
+// its burned-in captions bled through the bottom of the section.
+const BUDGET_MB = { 'ktp-band': 6 };
+const srcs = [
+  ...[...html.matchAll(/data-src="(uploads\/[\w./-]+\.mp4)"/g)].map(m => m[1]),
+  ...[...html.matchAll(/vid:'(uploads\/[\w./-]+\.mp4)'/g)].map(m => m[1]),
+];
+assert.ok(srcs.length >= 4, 'expected the KTP band and the three About films to be declared');
+assert.doesNotMatch(html, /principles-bg/, 'the old services backdrop film must not come back');
 for (const src of srcs) {
   const file = path.join(root, src);
   assert.ok(fs.existsSync(file), `missing video: ${src}`);

@@ -36,7 +36,8 @@ assert.match(news, /assets\/events\/gallery\/\$\{file\}\?v=\$\{galleryAssetVersi
 // never loads that script, so they are always on and the brochure one went
 // missing entirely when the page was first brought over.
 assert.match(news, /class="lm-whatsapp lm-brochure"[^>]*href="\/downloads\/longmotive-company-profile-2024\.pdf"/);
-assert.match(news, /class="lm-whatsapp"[^>]*href="https:\/\/wa\.me\/60149916828/);
+// The WhatsApp number changed to 60183410047 on 2026-10-14.
+assert.match(news, /class="lm-whatsapp"[^>]*href="https:\/\/wa\.me\/60183410047/);
 assert.ok(fs.existsSync(path.join(root, 'downloads', 'longmotive-company-profile-2024.pdf')), 'the brochure the button points at must ship');
 
 // Shared chrome the standalone page has to carry itself. theme-color paints

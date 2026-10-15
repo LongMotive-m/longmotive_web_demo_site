@@ -6,11 +6,15 @@ const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 const start = html.indexOf('<section class="lm-project-section">');
-const end = html.indexOf('<section class="lm-scroll-stop" style="background:var(--lm-gradient-brand)', start);
+// The section ends where the home CTA band begins. Found by its data hook, not
+// its colour: the band went from --lm-gradient-brand to --lm-gradient-deep in
+// October 2026 and a colour-based anchor broke this test without anything
+// being wrong with the section.
+const end = html.lastIndexOf('<section', html.indexOf('data-home-cta="true"', start));
 assert.ok(start >= 0 && end > start, 'selected-projects section must be present');
 const section = html.slice(start, end);
 
-assert.match(section, /Projects engineered for uptime\./);
+assert.match(section, /Data centres we have built\./);
 assert.match(section, /View all projects/);
 assert.match(section, /onClick="\{\{ goProjects \}\}"/);
 assert.match(section, /class="lm-project-rail"/);
