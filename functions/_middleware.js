@@ -3,8 +3,8 @@
 // Cloudflare Pages gives every project a permanent <project>.pages.dev and
 // every branch a <branch>.<project>.pages.dev, all public, with no switch to
 // turn them off. So www.longmotive-m.com has a twin serving byte-identical
-// content at longmotive-website.pages.dev -- an address that names the
-// project and answers with the whole site.
+// content at longmotive-web-demo-site-avm.pages.dev -- an address that names
+// the project, the account and the fact that it started life as a demo.
 //
 // Cloudflare already sends x-robots-tag: noindex on BRANCH previews. It does
 // not send it on the project host, which is the one that mirrors production,
@@ -16,19 +16,13 @@
 // Branch previews are how work gets reviewed before it ships, so they keep
 // serving. They only get a robots.txt that says no.
 //
-// SCOPE IS DELIBERATE: this touches our own projects' addresses and nothing
+// SCOPE IS DELIBERATE: this touches our own project's addresses and nothing
 // else. The custom domain falls through on the first comparison, and so does
 // any other Pages project that happens to deploy this repository -- that is
 // someone else's site to configure.
-//
-// TWO PROJECTS ARE OURS. In October 2026 the repository moved to the
-// LongMotive-m organisation and the builds moved with it, to a new project,
-// longmotive-website. The old one (longmotive-web-demo-site, served at the
-// -avm host) stopped receiving them. It stays on this list so that if it ever
-// deploys this code again it does not come back as an indexable copy.
 
 const CANONICAL_ORIGIN = 'https://www.longmotive-m.com';
-const PROJECT_HOSTS = ['longmotive-website.pages.dev', 'longmotive-web-demo-site-avm.pages.dev'];
+const PROJECT_HOST = 'longmotive-web-demo-site-avm.pages.dev';
 
 const DISALLOW_ALL = 'User-agent: *\nDisallow: /\n';
 
@@ -82,13 +76,13 @@ function isDocumentRequest(method, dest, accept) {
 }
 
 export function decide({ host, method = 'GET', pathname = '/', search = '', dest = '', accept = '' }) {
-  const project = PROJECT_HOSTS.find(p => host === p || host.endsWith('.' + p));
-  if (!project) return { action: 'pass' };
+  const ours = host === PROJECT_HOST || host.endsWith('.' + PROJECT_HOST);
+  if (!ours) return { action: 'pass' };
 
   if (pathname === '/robots.txt') return { action: 'robots' };
 
   // The project host mirrors production and has no job of its own.
-  if (host === project && isDocumentRequest(method, dest, accept)) {
+  if (host === PROJECT_HOST && isDocumentRequest(method, dest, accept)) {
     return { action: 'redirect', to: CANONICAL_ORIGIN + pathname + search };
   }
 
