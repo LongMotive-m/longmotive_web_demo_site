@@ -32,7 +32,52 @@ function field(formData, name) {
   return (formData.get(name) || '').toString().trim();
 }
 
-export async function onRequestPost({ request, env }) {
+// COPY EVERY SUBMISSION INTO THE COMPANY'S GOOGLE WORKSPACE.
+//
+// The email to info@ / humanresource@ stays exactly as it was. On top of it,
+// the same submission goes to the company's Apps Script web app ("WhatsApp
+// 通知中心", owned by agent@longmotive.com), which appends a row to the
+// enquiry sheet, files the CV in the HR-only Drive folder and sends the
+// WhatsApp alert to whoever the routing sheet names.
+//
+// Both settings are optional. Without APPS_SCRIPT_URL and WEB_KEY (a Pages
+// secret) nothing is sent, so a preview build or a fork never posts into the
+// company's records. A failure here is logged and never blocks the email or
+// the visitor's confirmation.
+export function workspacePayload(data, key) {
+  return {
+    key,
+    form: data.formType,
+    salutation: data.salutation,
+    name: data.name,
+    phone: data.contact,
+    email: data.email,
+    subject: data.subject,
+    message: data.message,
+    position: data.jobTitle,
+    page: data.page,
+    ...(data.cv ? { cv_base64: data.cv.content, cv_name: data.cv.filename, cv_type: data.cv.type } : {}),
+  };
+}
+
+async function sendToWorkspace(env, data) {
+  if (!env.APPS_SCRIPT_URL || !env.WEB_KEY) return;
+  try {
+    const response = await fetch(env.APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(workspacePayload(data, env.WEB_KEY)),
+    });
+    const text = await response.text().catch(() => '');
+    if (!response.ok || !/"ok"\s*:\s*true/.test(text)) {
+      console.error('Workspace copy failed:', response.status, text.slice(0, 300));
+    }
+  } catch (workspaceError) {
+    console.error('Workspace copy error:', workspaceError);
+  }
+}
+
+export async function onRequestPost({ request, env, waitUntil }) {
   const missingEnvironment = ['RESEND_API_KEY', 'CONTACT_FROM']
     .filter((name) => !env[name]);
   if (missingEnvironment.length > 0) {
@@ -124,6 +169,16 @@ export async function onRequestPost({ request, env }) {
       storedKey = null; // archiving failure must not block the email
     }
   }
+
+  // Recorded before the email is attempted, so a Resend outage does not lose
+  // the submission. waitUntil lets the visitor's reply go out without waiting.
+  const workspaceCopy = sendToWorkspace(env, {
+    formType, salutation, name, contact, email, subject, message, jobTitle,
+    page: request.headers.get('Referer') || '',
+    cv: attachment ? { content: attachment.content, filename: attachment.filename, type: cv.type } : null,
+  });
+  if (typeof waitUntil === 'function') waitUntil(workspaceCopy);
+  else await workspaceCopy;
 
   const emailHtml = isCareers
     ? `
