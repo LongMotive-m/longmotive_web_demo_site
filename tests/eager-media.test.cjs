@@ -58,6 +58,23 @@ for (const src of srcs) {
   }
 }
 
+// The What We Do films: each one listed in SVC_CLIPS exists, is real footage
+// rather than a preview stand-in, stays small enough for a section a visitor
+// may scroll straight past, and is never fetched up front -- the page hands a
+// film its src only when its row comes up.
+const clipMap = html.match(/const SVC_CLIPS=\{([^}]*)\}/);
+assert.ok(clipMap, 'SVC_CLIPS must be declared');
+const clips = [...clipMap[1].matchAll(/'([^']+\.mp4)'/g)].map(m => m[1]);
+assert.ok(clips.length >= 5, 'expected a film for at least five of the six rows');
+for (const clip of clips) {
+  assert.match(clip, /^uploads\/services\/[\w-]+-clip\.mp4$/, `${clip} is not a published services film`);
+  const file = path.join(root, clip);
+  assert.ok(fs.existsSync(file), `missing services film: ${clip}`);
+  const mb = fs.statSync(file).size / 1048576;
+  assert.ok(mb <= 5, `${clip} is ${mb.toFixed(1)}MB, over its 5MB budget`);
+}
+assert.match(html, /<video class="lm-svc-clip"[^>]*preload="none"/, 'services films must not preload');
+
 // Working files do not ship to the customer's domain.
 for (const orphan of ['hero-arc-compare', 'hero-jb-compare', 'hero-real-prototype',
                       'projects-compare', 'projects-hybrid', 'projects-map-prototype',

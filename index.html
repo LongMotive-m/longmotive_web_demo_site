@@ -190,6 +190,10 @@
   .lm-svc-slide[data-on="true"]{opacity:1}
   .lm-svc-slide img{display:block;width:100%;height:100%;max-width:none;object-fit:cover}
   .lm-svc-slide[data-on="true"] img{animation:lm-svc-drift 7s ease-out forwards}
+  /* The film sits over the still and only shows once it has a frame to show,
+     so a slow network sees the photograph, never a black box. */
+  .lm-svc-clip{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease}
+  .lm-svc-clip[data-ready="true"]{opacity:1}
   .lm-svc-scrim{position:absolute;inset:0;pointer-events:none;
     background:linear-gradient(90deg,rgba(7,36,72,.95) 0%,rgba(7,36,72,.86) 30%,rgba(7,36,72,.35) 58%,rgba(7,36,72,0) 78%),linear-gradient(0deg,rgba(7,36,72,.55) 0%,rgba(7,36,72,0) 26%)}
   .lm-svc-in{position:relative;max-width:var(--container-max);margin:0 auto;height:100%;padding:100px var(--gutter) 36px;display:flex;flex-direction:column;justify-content:center}
@@ -525,7 +529,7 @@
              question should come up. -->
         <div class="lm-svc-stage" aria-hidden="true">
           <sc-for list="{{ services }}" as="s" hint-placeholder-count="6">
-            <div class="lm-svc-slide" data-on="{{ s.on }}"><img data-src="{{ s.img }}" alt="" loading="lazy" decoding="async" style="{{ s.imgStyle }}"/></div>
+            <div class="lm-svc-slide" data-on="{{ s.on }}"><img data-src="{{ s.img }}" alt="" loading="lazy" decoding="async" style="{{ s.imgStyle }}"/><sc-if value="{{ s.hasClip }}" hint-placeholder-val="{{ false }}"><video class="lm-svc-clip" data-clip="{{ s.clip }}" muted="{{ true }}" playsinline="{{ true }}" preload="none" aria-hidden="true"></video></sc-if></div>
           </sc-for>
         </div>
         <div class="lm-svc-scrim" aria-hidden="true"></div>
@@ -1317,6 +1321,12 @@ const SECTION_STEP_COOLDOWN_MS=780;
 // What We Do: how long each discipline stays up. The CSS bar (lm-svc-fill)
 // is the same 6s; change the two together.
 const SVC_DWELL_MS=6000;
+// What We Do films, one per row; a row without one keeps its still. Fire
+// Protection has none: the 2026-09 shoot has no fire-protection footage.
+// Cut from that shoot, graded like the stills, nobody in frame:
+// HVAC C5390, Electrical C5399, Plumbing C5419, BIM C5392, Prefab C5383.
+const SVC_CLIPS={hvac:'uploads/services/hvac-clip.mp4',electrical:'uploads/services/electrical-clip.mp4',
+  plumbing:'uploads/services/plumbing-clip.mp4',coord:'uploads/services/coord-clip.mp4',prefab:'uploads/services/prefab-clip.mp4'};
 
 class Component extends DCLogic {
   state = { screen:null, filter:'All', contactTab:'careers', menuOpen:false, sent:false, err:false, submitting:false, errorMessage:'', openCert:null, logoStage:0, navRevealed:false, flyT:null, railPaused:false,
@@ -2711,11 +2721,35 @@ class Component extends DCLogic {
       if(live&&!this._svcSeen){ this._svcSeen=true; this._svcClock=0; this.setState({svcLive:true,svcIdx:0}); }
       else this.setState({svcLive:live});
     }
+    this._svcClips(sec,live);
     if(!live||this.state.svcHold) return;
     if(typeof matchMedia!=='undefined'&&matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     this._svcClock=(this._svcClock||0)+dt;
     if(this._svcClock>=SVC_DWELL_MS){ this._svcClock=0; this.setState(s=>({svcIdx:((s.svcIdx||0)+1)%SERVICES.length})); }
   };
+  // THE FILMS. The row on screen plays its film once from the start and then
+  // holds the last frame; every other film is paused. A film is given its src
+  // only when its row comes up or is next in line, so a visit that never
+  // reaches this section fetches none of them and one that does stays one
+  // ahead. Leaving the section pauses the film and coming back resumes it, the
+  // same as the bar; only a change of row starts one from the top.
+  _svcClips(sec,live){
+    if(!sec) return;
+    const idx=this.state.svcIdx||0,n=SERVICES.length;
+    if(live&&idx!==this._svcClipIdx){ this._svcClipIdx=idx; this._svcRun=(this._svcRun||0)+1; }
+    sec.querySelectorAll('.lm-svc-slide').forEach((slide,i)=>{
+      const v=slide.querySelector('video.lm-svc-clip'); if(!v) return;
+      const active=live&&i===idx;
+      if((active||(live&&i===(idx+1)%n))&&!v.getAttribute('src')){ v.muted=true; v.preload='auto'; v.src=v.getAttribute('data-clip'); }
+      if(!active){ if(!v.paused) v.pause(); return; }
+      if(v._lmRun!==this._svcRun){
+        v._lmRun=this._svcRun; v.setAttribute('data-ready','false');
+        try{ v.currentTime=0; }catch(e){}
+      }
+      if(v.paused&&!v.ended){ v.muted=true; const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }
+      if(v.readyState>=2&&!v.seeking) v.setAttribute('data-ready','true');
+    });
+  }
   // Pointing at another row starts it from zero; pointing at the current one
   // just holds it where it is. A tap is enter-then-click, so click releases.
   _svcHover=(i)=>{ if(i!==(this.state.svcIdx||0)) this._svcClock=0; this.setState({svcIdx:i,svcHold:true}); };
@@ -2859,9 +2893,11 @@ class Component extends DCLogic {
     // Phones get the 960px stills; the picture there is a 56vh band, not a wall.
     const _svcW=(typeof matchMedia!=='undefined'&&matchMedia('(max-width:760px)').matches)?960:1920;
     const _svcIdx=this.state.svcIdx||0;
+    const _svcCalm=typeof matchMedia!=='undefined'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
     const services = SERVICES.map((s,i)=>({...s,
       num:String(i+1).padStart(2,'0'), on:i===_svcIdx,
       img:'uploads/services/'+s.key+'-'+_svcW+'.jpg', imgStyle:{objectPosition:s.pos},
+      clip:SVC_CLIPS[s.key]||'', hasClip:_svcW===1920&&!_svcCalm&&!!SVC_CLIPS[s.key],
       onEnter:()=>this._svcHover(i), onPick:()=>this._svcPick(i),
       onKey:(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); this._svcPick(i); } }
     }));
